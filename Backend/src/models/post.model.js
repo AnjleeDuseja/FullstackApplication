@@ -1,4 +1,5 @@
 import mongoose, {Schema} from "mongoose";
+import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2"
 
 const postSchema=new Schema({
 
@@ -14,12 +15,22 @@ const postSchema=new Schema({
     coverImage:{
         type:String,
     },
+    isPosted:{
+        type: Boolean,
+        default:true
+    },
+    views:{
+        type:Number,
+        default:0,
+    },
     postedBy:{
         type:Schema.Types.ObjectId,
         ref:"User",
     },
 
 },{timestamps:true});
+
+postSchema.plugin(mongooseAggregatePaginate)
 
 const Post=mongoose.model("Post",postSchema);
 export default Post;
