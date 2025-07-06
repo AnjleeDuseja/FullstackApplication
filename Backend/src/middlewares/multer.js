@@ -1,9 +1,9 @@
 import multer from "multer"
 
 
-const diskStorage=multer.diskStorage({
+const storage=multer.diskStorage({
 destination: function(req,file,callBack){
-    callBack(null, "../../public/temp")
+    callBack(null, "./public/temp")
 },
 filename: function(req, file, callBack){
     callBack(null, file.originalname)
@@ -12,5 +12,5 @@ filename: function(req, file, callBack){
 })
 
 export const upload=multer({
-   diskStorage
+   storage
 })

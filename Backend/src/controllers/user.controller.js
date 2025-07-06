@@ -1,15 +1,62 @@
+import User from "../models/user.model.js"
+import { APIError } from "../utils/APIError.js"
+import { APIResponse } from "../utils/APIResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
+import { UploadFileonCloudinary } from "../utils/Cloudinary.js"
 
 const registerUser= asyncHandler(async (req, res)=>{
 
-  return  res.status(200).json({
-        message:"user registered successfully!"
+    const {name, email, password }=req.body
+  
+//checking if required fields are empty
+   const data= [name, email, password].filter((data)=> data.trim()==="")
+   
+   if(data.length>0){
+    throw new APIError(402, "Username, email and password are required!")
+   }
+
+//check if username or email already exist
+
+    const existedUser= await User.findOne({
+      $or:[{name},{email}]
+    });
+
+     if(existedUser){
+      throw new APIError(404, "username or email is already registered!")
+    }
+
+
+    const profileLocalPath=req.file?.path
+
+    if(!profileLocalPath){
+      throw new APIError(403, "Profile picture is required!")
+    }
+
+    const profileUrl=await UploadFileonCloudinary(profileLocalPath);
+
+    if(!profileUrl)
+      throw new APIError(402, "Profile picture is required!")
+
+    //creating user object to save it in database
+    const user=  await User.create({
+      name,
+      email,
+      password,
+      profile:profileUrl.url
     })
+// checking if user saved
+    const createdUser= await User.findById(user._id).select("-password -refreshToken")
+    console.log(createdUser)
+
+    if(!createdUser)
+      throw APIError(501,"Failed to register user")
+
+  return  res.status(200).json(
+    new APIResponse(200, "User registered successfully!", createdUser)
+  )
 
 })
 
-const trial=async()=>{
-   console.log("running")
-}
 
-export {registerUser, trial}
+
+export {registerUser}
