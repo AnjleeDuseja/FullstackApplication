@@ -49,7 +49,7 @@ const registerUser= asyncHandler(async (req, res)=>{
     console.log(createdUser)
 
     if(!createdUser)
-      throw APIError(501,"Failed to register user")
+      throw new APIError(501,"Failed to register user")
 
   return  res.status(200).json(
     new APIResponse(200, "User registered successfully!", createdUser)
@@ -57,6 +57,67 @@ const registerUser= asyncHandler(async (req, res)=>{
 
 })
 
+const loginUser = asyncHandler( async (req,res)=>{
+
+console.log(req.body)
 
 
-export {registerUser}
+  const {name, email, password }=req.body
+
+  const generateTokens= async function(id){
+    
+    const user=await User.findById(id);
+    const refreshToken=user.generateRefreshToken();
+    const accessToken= user.generateAccessToken();
+
+    user.refreshToken=refreshToken;
+    user.save({validateBeforeSave:false});
+    return {accessToken, refreshToken};
+
+  }
+
+  if(!(name || email)){
+    throw new APIError(400,"Username or Email is required!")
+
+  }
+  if(!password){
+    
+    throw new APIError(400,"Password is required!")
+  }
+
+ const userInstance=await User.findOne({
+    $or:[{name},{email}]
+  })
+
+  if(!userInstance){
+    throw new APIError(401,"incorrrect credentials!")
+  }
+
+  const verifiedPassword=await userInstance.verifyPassword(password)
+
+  if(!verifiedPassword){
+    throw new APIError(401,"incorrrect credentials!")
+
+  }
+
+  const {refreshToken, accessToken}=await generateTokens(userInstance._id)
+
+  const options={
+    httpOnly:true,
+    secure: true
+  }
+
+  const updatedUser= await User.findById(userInstance._id)
+  .select("-password -refreshToken")
+  console.log(updatedUser)
+
+  return res.status(200)
+  .cookie("accessToken", accessToken, options)
+  .cookie("refreshToken", refreshToken, options)
+  .json(new APIResponse(200, "User loggedin successfully!", {user:updatedUser, refreshToken, accessToken}))
+
+
+})
+
+
+export {registerUser, loginUser}
