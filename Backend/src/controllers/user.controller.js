@@ -59,11 +59,10 @@ const registerUser= asyncHandler(async (req, res)=>{
 
 const loginUser = asyncHandler( async (req,res)=>{
 
-console.log(req.body)
-
-
   const {name, email, password }=req.body
 
+
+  //function to generate tokens 
   const generateTokens= async function(id){
     
     const user=await User.findById(id);
@@ -76,23 +75,31 @@ console.log(req.body)
 
   }
 
+  // checking if user provided username or email
   if(!(name || email)){
     throw new APIError(400,"Username or Email is required!")
 
   }
+
+  
+  // checking if user provided password
   if(!password){
     
     throw new APIError(400,"Password is required!")
   }
 
+
+//checking if user existed in database
  const userInstance=await User.findOne({
     $or:[{name},{email}]
   })
+
 
   if(!userInstance){
     throw new APIError(401,"incorrrect credentials!")
   }
 
+  //verifying the password if user entered correct password
   const verifiedPassword=await userInstance.verifyPassword(password)
 
   if(!verifiedPassword){
@@ -100,17 +107,22 @@ console.log(req.body)
 
   }
 
+
+  // if user name and password is correct generate tokens 
+
   const {refreshToken, accessToken}=await generateTokens(userInstance._id)
 
-  const options={
+
+//getting updated user as refreshToken is added and removing the password and refreshToken 
+  const updatedUser= await User.findById(userInstance._id)
+  .select("-password -refreshToken")
+ 
+   const options={
     httpOnly:true,
     secure: true
   }
 
-  const updatedUser= await User.findById(userInstance._id)
-  .select("-password -refreshToken")
-  console.log(updatedUser)
-
+  //returning user data and tokens in cookie and object 
   return res.status(200)
   .cookie("accessToken", accessToken, options)
   .cookie("refreshToken", refreshToken, options)
