@@ -201,4 +201,61 @@ const generateNewAccessToken= asyncHandler( async (req, res)=>{
 
 })
 
-export {registerUser, loginUser, logoutUser, generateNewAccessToken}
+const updateProfile = asyncHandler(async (req, res)=>{
+
+
+    const userId=req.user?._conditions?._id;
+    const profileLocalPath=req.file?.path
+ 
+
+    if(!profileLocalPath){
+      throw new APIError(403, "Profile picture is required!")
+    }
+
+    const profileUrl=await UploadFileonCloudinary(profileLocalPath);
+
+    if(!profileUrl)
+      throw new APIError(402, "Profile picture is required!")
+
+    await User.findByIdAndUpdate(userId,{
+        $set:{profile: profileUrl.url}
+      },
+    {new:true}
+    )
+const updatedUser = await User.findById(userId).select("-password -refreshToken")
+   
+
+     return  res.status(200).json(
+    new APIResponse(200, "profile updated successfully!", updatedUser)
+  )
+    
+
+})
+
+const updatePassword= asyncHandler(async (req, res)=>{
+
+const {oldPassword, newPassword}=req.body;  
+
+
+const userId=req.user?._conditions?._id;
+const user=await User.findById(userId);
+
+const passwordCheck=user.verifyPassword(oldPassword)
+
+if(!passwordCheck)
+  throw new APIError(401, "Old password is incorrect")
+
+
+  user.password=newPassword; 
+  await  user.save({validateBeforeSave:false});
+    
+  const updatedUser = await User.findById(user._id).select("-password -refreshToken")
+   
+     return  res.status(200).json(
+    new APIResponse(200, "Password updated!", updatedUser))
+
+
+})
+
+
+export {registerUser, loginUser, logoutUser, generateNewAccessToken, updateProfile, updatePassword}
